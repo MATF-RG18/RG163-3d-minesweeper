@@ -6,5 +6,6 @@ set(CMAKE_CXX_STANDARD 11)
 link_libraries(GL)
 link_libraries(GLU)
 link_libraries(glut)
+link_libraries(m)
 
 add_executable(main main.c)
