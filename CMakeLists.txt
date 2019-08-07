@@ -8,4 +8,4 @@ link_libraries(GLU)
 link_libraries(glut)
 link_libraries(m)
 
-add_executable(main main.c)
+add_executable(main main.cpp Field.cpp Field.hpp Board.cpp Board.hpp)
