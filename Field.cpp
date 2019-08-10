@@ -1,13 +1,7 @@
 #include "Field.hpp"
 
 Field::Field(int x, int y)
-    : x(x),
-      y(y),
-      visited(false),
-      mine(false),
-      marked(false),
-      value(0),
-      selected(false) {}
+    : x(x), y(y), visited(false), mine(false), marked(false), value(0), selected(false) {}
 
 void Field::drawField() {
     glPushMatrix();
@@ -62,10 +56,11 @@ void Field::setSelected(bool selected) {
     Field::selected = selected;
 }
 
-float Field::getX() const {
+int Field::getX() const {
     return x;
 }
 
-float Field::getY() const {
+int Field::getY() const {
     return y;
 }
+

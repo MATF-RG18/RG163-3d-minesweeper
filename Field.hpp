@@ -1,5 +1,5 @@
-#ifndef INC_3DMINESWEEPER_FIELD_H
-#define INC_3DMINESWEEPER_FIELD_H
+#ifndef INC_3DMINESWEEPER_FIELD_HPP
+#define INC_3DMINESWEEPER_FIELD_HPP
 
 #include <GL/glut.h>
 
@@ -38,10 +38,10 @@ public:
 
     void drawField();
 
-    float getX() const;
+    int getX() const;
 
-    float getY() const;
+    int getY() const;
 };
 
 
-#endif //INC_3DMINESWEEPER_FIELD_H
+#endif //INC_3DMINESWEEPER_FIELD_HPP

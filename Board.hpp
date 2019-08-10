@@ -1,9 +1,13 @@
-#ifndef INC_3DMINESWEEPER_BOARD_H
-#define INC_3DMINESWEEPER_BOARD_H
+#ifndef INC_3DMINESWEEPER_BOARD_HPP
+#define INC_3DMINESWEEPER_BOARD_HPP
 
 
 #include <vector>
+#include <ctime>
+#include <utility>
 #include "Field.hpp"
+#include "Grid.hpp"
+#include "Mine.hpp"
 
 class Board {
 private:
@@ -11,17 +15,31 @@ private:
     int boardHeight;
     int numberOfMines;
     std::vector<Field*> fields;
+    std::vector<Grid*> grids;
+    std::vector<Mine*> mines;
 public:
     Board(int boardHeight, int boardWidth, int numberOfMines);
 
-    void add_field(Field* field);
+    void addField(Field* field);
 
-    void draw_board();
+    void drawBoard();
 
-    Field* find_selected_field();
+    Field* findSelectedField();
 
-    Field* find_specified_field(int x, int y);
+    Field* findSpecifiedField(int x, int y);
+
+    void addGrid(Grid* grid);
+
+    void initBoard();
+
+    Grid* findSpecifiedGrid(int x, int y);
+
+    int calculateValues();
+
+    void printValues();
+
+    void addMine(Mine* mine);
 };
 
 
-#endif //INC_3DMINESWEEPER_BOARD_H
+#endif //INC_3DMINESWEEPER_BOARD_HPP

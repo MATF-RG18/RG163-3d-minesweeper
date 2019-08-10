@@ -1,13 +1,17 @@
 #include <GL/glut.h>
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
+#include <cstring>
 #include "Field.hpp"
 #include "Board.hpp"
+#include "Grid.hpp"
+#include "Mine.hpp"
 
 #define TIMER_ID (0)
-#define boardWidth (8)
-#define boardHeight (8)
-#define numOfMines (30)
+#define boardWidth (9)
+#define boardHeight (9)
+#define numOfMines (10)
 
 /* Dimenzije prozora */
 static int window_width, window_height;
@@ -15,6 +19,11 @@ static int window_width, window_height;
 static int mouse_x, mouse_y;
 /* Kumulativna matrica rotacije */
 static float matrix[16];
+/* Faktor za zumiranje */
+static float zoom_x = 1.0;
+static float zoom_y = 1.0;
+/* Konstanta pi. */
+const static float pi = 3.141592653589793;
 
 /* Deklaracija funkcije za OpenGL inicijalizaciju  */
 static void init();
@@ -29,12 +38,11 @@ static void on_timer(int id);
 
 /* Implementirane f-je */
 static void coordinate_system();
-static void draw_field();
 
-static void init_fields();
+/* Funkcije nezavisne od OpenGL-a
+int** initMatrix(int **matrix, int size); */
 
-/* Funkcije nezavisne od OpenGL-a */
-int** initMatrix(int **matrix, int size);
+void createMenu();
 
 Board board = Board(boardWidth, boardHeight, numOfMines);
 
@@ -48,6 +56,11 @@ int main(int argc, char **argv)
     glutInitWindowSize(1280, 720);
     glutInitWindowPosition(100, 100);
     glutCreateWindow("Minesweeper");
+
+    init();
+    board.initBoard();
+
+    /* TODO:Kreiranje menija */
 
     /* Registruju se callback funkcije. */
     glutDisplayFunc(on_display);
@@ -65,34 +78,26 @@ int main(int argc, char **argv)
     glLoadIdentity();
     glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
 
-    init();
-
     /* Ulazimo u glavnu petlju */
     glutMainLoop();
 
     return 0;
 }
 
-static void init(void)
+static void init()
 {
-    glClearColor(0, 0, 0, 0);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glClearColor(1.0, 1.0, 1.0, 0);
     glEnable(GL_DEPTH_TEST);
 
     /* Promena debljine linije */
     glLineWidth(3);
 }
 
-static void on_display(void)
+static void on_display()
 {
     /* Brise se prethodni sadrzaj prozora. */
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    /* Podesava se viewport. */
-    glViewport(0, 0, window_width, window_height);
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluPerspective(60, window_width/(float)window_height, 1, 200);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -100,12 +105,18 @@ static void on_display(void)
               0, 0, 0,
               0, 1, 0);
 
-    coordinate_system();
-
     /* Primena matrice rotacije */
     glMultMatrixf(matrix);
 
-    board.draw_board();
+    /*Mine mine = Mine(0.33);
+    glPushMatrix();
+    glTranslatef(1.0, 0.0, 1.0);
+    mine.drawMine();
+    glPopMatrix();*/
+    coordinate_system();
+
+    board.drawBoard();
+    board.printValues(); /* samo za proveru dok ne ispisemo brojeve na tabli */
 
     glutSwapBuffers();
 }
@@ -119,21 +130,21 @@ void on_keyboard(unsigned char key, int x, int y)
             break;
         }
         case ' ': {
-            Field *field = board.find_selected_field();
+            Field *field = board.findSelectedField();
             field->setVisited(true);
             glutPostRedisplay();
             break;
         }
         case 'W':
         case 'w': {
-            Field *field = board.find_selected_field();
+            Field *field = board.findSelectedField();
             field->setSelected(false);
             if(field->getY() == 0) { /* Ukoliko je trenutno polje na gornjoj ivici table za igru */
-                Field *pom = board.find_specified_field(field->getX(), boardHeight - 1);
+                Field *pom = board.findSpecifiedField(field->getX(), boardHeight - 1);
                 pom->setSelected(true);
             }
             else {
-                Field *pom = board.find_specified_field(field->getX(), field->getY() - 1);
+                Field *pom = board.findSpecifiedField(field->getX(), field->getY() - 1);
                 pom->setSelected(true);
             }
             glutPostRedisplay();
@@ -141,14 +152,13 @@ void on_keyboard(unsigned char key, int x, int y)
         }
         case 'A':
         case 'a': {
-            Field *field = board.find_selected_field();
+            Field *field = board.findSelectedField();
             field->setSelected(false);
-            if(field->getX() == 0) { /* Ukoliko je trenutno polje na levoj ivici table za igru */
-                Field *pom = board.find_specified_field(boardWidth - 1, field->getY());
+            if (field->getX() == 0) { /* Ukoliko je trenutno polje na levoj ivici table za igru */
+                Field *pom = board.findSpecifiedField(boardWidth - 1, field->getY());
                 pom->setSelected(true);
-            }
-            else {
-                Field *pom = board.find_specified_field(field->getX() - 1, field->getY());
+            } else {
+                Field *pom = board.findSpecifiedField(field->getX() - 1, field->getY());
                 pom->setSelected(true);
             }
             glutPostRedisplay();
@@ -156,14 +166,14 @@ void on_keyboard(unsigned char key, int x, int y)
         }
         case 'S':
         case 's': {
-            Field *field = board.find_selected_field();
+            Field *field = board.findSelectedField();
             field->setSelected(false);
             if(field->getY() == boardHeight - 1) { /* Ukoliko je trenutno polje na donjoj ivici table za igru */
-                Field *pom = board.find_specified_field(field->getX(), 0);
+                Field *pom = board.findSpecifiedField(field->getX(), 0);
                 pom->setSelected(true);
             }
             else {
-                Field *pom = board.find_specified_field(field->getX(), field->getY() + 1);
+                Field *pom = board.findSpecifiedField(field->getX(), field->getY() + 1);
                 pom->setSelected(true);
             }
             glutPostRedisplay();
@@ -171,19 +181,21 @@ void on_keyboard(unsigned char key, int x, int y)
         }
         case 'D':
         case 'd': {
-            Field *field = board.find_selected_field();
+            Field *field = board.findSelectedField();
             field->setSelected(false);
             if(field->getX() == boardWidth - 1) { /* Ukoliko je trenutno polje na desnoj ivici table za igru */
-                Field *pom = board.find_specified_field(0, field->getY());
+                Field *pom = board.findSpecifiedField(0, field->getY());
                 pom->setSelected(true);
             }
             else {
-                Field *pom = board.find_specified_field(field->getX() + 1, field->getY());
+                Field *pom = board.findSpecifiedField(field->getX() + 1, field->getY());
                 pom->setSelected(true);
             }
             glutPostRedisplay();
             break;
         }
+        default:
+            break;
     }
 }
 
@@ -192,6 +204,13 @@ static void on_reshape(int width, int height)
     /* Pamte se sirina i visina prozora. */
     window_width = width;
     window_height = height;
+
+    /* Podesava se viewport. */
+    glViewport(0, 0, window_width, window_height);
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(70, window_width/(float)window_height, 1, 200);
 }
 
 static void coordinate_system()
@@ -211,30 +230,25 @@ static void coordinate_system()
     glEnd();
 }
 
-int** initMatrix(int **matrix, int size){
-    matrix = (int**)calloc(size, sizeof(int*));
-    for(int i = 0; i < size; i++)
-        matrix[i] = (int*)calloc(size, sizeof(int));
-    return matrix;
-}
-
 void on_mouse(int button, int state, int x, int y) {
     switch(button)
     {
         case GLUT_LEFT_BUTTON:
-            if(state == GLUT_DOWN) {
-                printf("%d, %d\n", x, y);
-            }
-            break;
-        case GLUT_MIDDLE_BUTTON:
             break;
         case GLUT_RIGHT_BUTTON:
+            break;
+        case 3: /* Mouse wheel scroll up */
+            
+            break;
+        case 4: /* Mouse wheel scrool down */
             break;
         default:
             break;
     }
     mouse_x = x;
     mouse_y = y;
+
+
 }
 
 void on_motion(int x, int y) {
@@ -256,3 +270,4 @@ void on_timer(int id) {
 
     glutPostRedisplay();
 }
+
