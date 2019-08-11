@@ -7,11 +7,13 @@
 #include "Board.hpp"
 #include "Grid.hpp"
 #include "Mine.hpp"
+#include "BMPLoader.hpp"
 
 #define TIMER_ID (0)
 #define boardWidth (9)
 #define boardHeight (9)
 #define numOfMines (10)
+#define FILENAME "../Numbers/"
 
 /* Dimenzije prozora */
 static int window_width, window_height;
@@ -24,6 +26,7 @@ static float zoom_x = 1.0;
 static float zoom_y = 1.0;
 /* Konstanta pi. */
 const static float pi = 3.141592653589793;
+unsigned int ID;
 
 /* Deklaracija funkcije za OpenGL inicijalizaciju  */
 static void init();
@@ -42,9 +45,15 @@ static void coordinate_system();
 /* Funkcije nezavisne od OpenGL-a
 int** initMatrix(int **matrix, int size); */
 
+static void add_texture(int i);
+
+static GLuint names[10];
+
 void createMenu();
 
 Board board = Board(boardWidth, boardHeight, numOfMines);
+
+BMPLoader image = BMPLoader(0, 0);
 
 int main(int argc, char **argv)
 {
@@ -56,9 +65,6 @@ int main(int argc, char **argv)
     glutInitWindowSize(1280, 720);
     glutInitWindowPosition(100, 100);
     glutCreateWindow("Minesweeper");
-
-    init();
-    board.initBoard();
 
     /* TODO:Kreiranje menija */
 
@@ -73,10 +79,8 @@ int main(int argc, char **argv)
     mouse_x = 0;
     mouse_y = 0;
 
-    /* Inicijalizacija matrice rotacije */
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
+    init();
+    board.initBoard();
 
     /* Ulazimo u glavnu petlju */
     glutMainLoop();
@@ -92,6 +96,34 @@ static void init()
 
     /* Promena debljine linije */
     glLineWidth(3);
+
+    glEnable(GL_TEXTURE_2D);
+
+    glTexEnvf(GL_TEXTURE_ENV,
+              GL_TEXTURE_ENV_MODE,
+              GL_REPLACE);
+
+    /* Generisu se identifikatori tekstura. */
+    glGenTextures(10, names);
+
+    for(int i = 1; i < 9; i++) {
+        char iStr[2];
+        sprintf(iStr, "%d", i);
+        char str[30];
+        strcpy(str, FILENAME);
+        strcat(str, iStr);
+        strcat(str, ".bmp");
+        image.BMPRead(str);
+        add_texture(i);
+    }
+
+    /* Iskljucujemo aktivnu teksturu */
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    /* Inicijalizacija matrice rotacije */
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
 }
 
 static void on_display()
@@ -101,22 +133,20 @@ static void on_display()
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    gluLookAt(3, 15, 13,
+    gluLookAt(13, 20, 8,
               0, 0, 0,
               0, 1, 0);
 
     /* Primena matrice rotacije */
     glMultMatrixf(matrix);
 
-    /*Mine mine = Mine(0.33);
-    glPushMatrix();
-    glTranslatef(1.0, 0.0, 1.0);
-    mine.drawMine();
-    glPopMatrix();*/
-    coordinate_system();
+    //coordinate_system();
 
     board.drawBoard();
-    board.printValues(); /* samo za proveru dok ne ispisemo brojeve na tabli */
+    board.printValues(names); /* samo za proveru dok ne ispisemo brojeve na tabli */
+
+    /* Iskljucujemo aktivnu teksturu */
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     glutSwapBuffers();
 }
@@ -247,21 +277,32 @@ void on_mouse(int button, int state, int x, int y) {
     }
     mouse_x = x;
     mouse_y = y;
-
-
 }
 
 void on_motion(int x, int y) {
     /* Promene pozicija pokazivaca misa */
     int delta_x, delta_y;
 
-    /* Izracunavanje promena pozicije */
+    /* Racunanje promena pozicije */
     delta_x = x - mouse_x;
     delta_y = y - mouse_y;
 
     /* Pamcenje nove pozicije */
     mouse_x = x;
     mouse_y = y;
+
+    /* Izracunavanje nove matrice rotacije. */
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+    glRotatef(180 * (float) delta_x / window_width, 0, 1, 0);
+    glRotatef(180 * (float) delta_y / window_height, 1, 0, 0);
+    glMultMatrixf(matrix);
+
+    glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
+    glPopMatrix();
+
+    glutPostRedisplay();
 }
 
 void on_timer(int id) {
@@ -269,5 +310,20 @@ void on_timer(int id) {
         return;
 
     glutPostRedisplay();
+}
+
+void add_texture(int i) {
+    glBindTexture(GL_TEXTURE_2D, names[i]);
+    glTexParameteri(GL_TEXTURE_2D,
+                    GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D,
+                    GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D,
+                    GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,
+                    GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+                 image.width, image.height, 0,
+                 GL_RGB, GL_UNSIGNED_BYTE, image.pixels);
 }
 

@@ -36,7 +36,7 @@ public:
 
     int calculateValues();
 
-    void printValues();
+    void printValues(GLuint *names);
 
     void addMine(Mine* mine);
 };

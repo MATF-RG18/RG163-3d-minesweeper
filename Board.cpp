@@ -114,10 +114,27 @@ int Board::calculateValues() {
     }
 }
 
-/* Ispis broja suseda (iskljucivo za proveru dok ne ispisemo na tabli za igru) */
-void Board::printValues() {
+void Board::printValues(GLuint *names) {
     for(Field* field : fields) {
-        printf("%d %d : %d\n", field->getX(), field->getY(), field->getValue());
+        int value = field->getValue();
+        if(value == -1 || value == 0) continue; // ukoliko je bomba ili nema suseda
+        Grid *grid = findSpecifiedGrid(field->getX(), field->getY());
+        glBindTexture(GL_TEXTURE_2D, names[value]);
+        glBegin(GL_QUADS);
+        glNormal3f(0, 1, 0);
+
+        glTexCoord2f(0.3, 0);
+        glVertex3f(grid->getX() - 0.49, -0.49, grid->getY() - 0.49); /* Umesto 0.5 stavljeno je 0.49 kako bi se videle linije izmedju kvadratica na podlozi */
+
+        glTexCoord2f(1, 0);
+        glVertex3f(grid->getX() - 0.49, -0.49, grid->getY() + 0.49);
+
+        glTexCoord2f(1, 0.9);
+        glVertex3f(grid->getX() + 0.49, -0.49, grid->getY() + 0.49);
+
+        glTexCoord2f(0.3, 0.9);
+        glVertex3f(grid->getX() + 0.49, -0.49, grid->getY() - 0.49);
+        glEnd();
     }
 }
 

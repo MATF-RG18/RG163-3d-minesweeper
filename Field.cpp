@@ -1,7 +1,7 @@
 #include "Field.hpp"
 
 Field::Field(int x, int y)
-    : x(x), y(y), visited(false), mine(false), marked(false), value(0), selected(false) {}
+    : x(x), y(y), visited(true), mine(false), marked(false), value(0), selected(false) {}
 
 void Field::drawField() {
     glPushMatrix();
