@@ -11,8 +11,8 @@
 #include "Mine.hpp"
 #include "BMPLoader.hpp"
 
-#define TIMER_ID (0)
 #define FILENAME "../Numbers/"
+/* Minimalni i maksimalni poluprecnik sfere */
 #define MAX_R (20)
 #define MIN_R (4)
 
@@ -22,16 +22,14 @@ static int numOfMines = 10;
 
 /* Dimenzije prozora */
 static int windowWidth = 1280, windowHeight = 720;
-/* Kumulativna matrica rotacije */
-static float matrix[16];
 /* Uglovi u sfernom koordinatnom sistemu koji
-   odredjuju polozaj vidne tacke. */
+   odredjuju polozaj vidne tacke i njihovi inkrementi. */
 static double phi, theta;
-/* Inkrementi gornjih uglova. */
 static double deltaPhi, deltaTheta;
 /* Konstanta pi. */
 const static float pi = 3.141592653589793;
 
+/* Promenljive za podesavanja / izmene svetla*/
 static float centerX;
 static float centerY = 0;
 static float centerZ;
@@ -79,7 +77,6 @@ static void initCamera();
 static void moveCamera();
 
 static void addTexture(int i);
-
 static GLuint names[9];
 
 /* Pravljenje objekta table za igru i objekta za ocitavanje bmp fajlova */
@@ -145,7 +142,7 @@ static void init()
     glGenTextures(10, names);
 
     for(int i = 1; i < 9; i++) {
-        char iStr[2];
+        char iStr[3];
         sprintf(iStr, "%d", i);
         char str[30];
         strcpy(str, FILENAME);
@@ -211,7 +208,7 @@ static void onDisplay()
     glDisable(GL_LIGHTING);
     glDisable(GL_LIGHT0);
 
-    coordinateSystem();
+    //coordinateSystem();
 
     /* Podesavaju se parametri materijala. */
     glMaterialfv(GL_FRONT, GL_AMBIENT, coeffsAmbient);

@@ -3,7 +3,6 @@
 
 #include <GL/glut.h>
 
-/* Respresents one cube to be opened */
 class Field {
 private:
     int x;
