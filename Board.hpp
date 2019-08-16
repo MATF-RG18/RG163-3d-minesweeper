@@ -39,6 +39,16 @@ public:
     void printValues(GLuint *names);
 
     void addMine(Mine* mine);
+
+    Grid *findSelectedGrid();
+
+    void visitAllZeroValueNeighbours(Field *field);
+
+    void change(int boardHeight, int boardWidth, int numberOfMines);
+
+    void show();
+
+    void visitAllNeighbours(Field *field);
 };
 
 

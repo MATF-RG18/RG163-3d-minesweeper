@@ -14,17 +14,17 @@ void BMPLoader::BMPRead(const char *filename) {
     free(this->pixels);
     this->pixels = nullptr;
 
-    /* Otvara se fajl koji sadrzi sliku u binarnom rezimu. */
+    /* Otvaranje fajla koji sadrzi sliku u binarnom rezimu. */
     assert((file = fopen(filename, "rb")) != nullptr);
 
-    /* Ocitavaju se podaci prvog zaglavlja. */
+    /* Ocitavanje podataka prvog zaglavlja. */
     fread(&bfh.type, 2, 1, file);
     fread(&bfh.size, 4, 1, file);
     fread(&bfh.reserved1, 2, 1, file);
     fread(&bfh.reserved2, 2, 1, file);
     fread(&bfh.offsetbits, 4, 1, file);
 
-    /* Ocitavaju se podaci drugog zaglavlja. */
+    /* Ocitavanje podataka drugog zaglavlja. */
     fread(&bih.size, 4, 1, file);
     fread(&bih.width, 4, 1, file);
     fread(&bih.height, 4, 1, file);
@@ -44,9 +44,8 @@ void BMPLoader::BMPRead(const char *filename) {
     this->height = bih.height;
 
     /*
-     * U zavisnosti od toga koliko bitova informacija se cita po pikselu
-     * (da li samo R, G i B komponenta ili R, G, B i A), alociramo niz
-     * odgovarajuce duzine.
+     * Alociranje niza odgovarajuce duzinu u zavisnosti od toga da li se
+     * koristi RGB ili RGBA.
      */
     if (bih.bitcount == 24)
         this->pixels = new char[3 * bih.width * bih.height * sizeof(char)];
@@ -61,9 +60,7 @@ void BMPLoader::BMPRead(const char *filename) {
     /* Ucitavaju se podaci o pikselima i smestaju u alocirani niz. */
     if (bih.bitcount == 24)
         /*
-         * Ako se po pikselu cita 24 bita = 3 bajta informacija, pretpostavljamo
-         * da oni (ta 3 bajta) predstavljaju R, G i B komponentu boje (1 bajt po
-         * komponenti).
+         * U slucaju kada je RGB, 24 bita = 3 bajta, 1 po komponenti
          */
         for (i = 0; i < bih.width * bih.height; i++) {
             fread(&b, sizeof(char), 1, file);
@@ -76,9 +73,7 @@ void BMPLoader::BMPRead(const char *filename) {
         }
     else if (bih.bitcount == 32)
         /*
-         * Ako se po pikselu cita 32 bita = 4 bajta informacija, pretpostavljamo
-         * da oni (ta 4 bajta) predstavljaju R, G, B i A komponentu boje (1 bajt po
-         * komponenti).
+         * RGBA, tj. 32 bita = 4 bajta, 1 po komponenti
          */
         for (i = 0; i < bih.width * bih.height; i++) {
             fread(&b, sizeof(char), 1, file);

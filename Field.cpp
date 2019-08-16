@@ -1,19 +1,28 @@
 #include "Field.hpp"
 
 Field::Field(int x, int y)
-    : x(x), y(y), visited(true), mine(false), marked(false), value(0), selected(false) {}
+    : x(x), y(y), visited(false), mine(false), marked(false), value(0), selected(false) {}
 
 void Field::drawField() {
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
     glPushMatrix();
         glTranslatef(this->x, 0, this->y);
         if(this->isSelected())
             glColor3f(0.5, 0.5, 0.5);
+        else if(this->isMarked())
+            glColor3f(1, 0, 0);
         else
             glColor3f(0.7, 0.7, 0.7);
         glutSolidCube(1);
-        glColor3f(0.5, 0.5, 0.5);
+        if(this->isMarked())
+            glColor3f(0.2, 0, 0);
+        else
+            glColor3f(0.5, 0.5, 0.5);
         glutWireCube(1);
     glPopMatrix();
+    glDisable(GL_LIGHTING);
+    glDisable(GL_LIGHT0);
 }
 
 bool Field::isVisited() const {

@@ -1,9 +1,13 @@
+/*
+ * Zaglavlje za ocitavanje slika sa ekstenzijom bmp.
+ * */
+
 #ifndef INC_3DMINESWEEPER_BMPLOADER_HPP
 #define INC_3DMINESWEEPER_BMPLOADER_HPP
 
 #include <cstdio>
 #include <iostream>
-#include <assert.h>
+#include <cassert>
 #include "BMPLoader.hpp"
 
 typedef struct {

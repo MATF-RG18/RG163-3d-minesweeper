@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <cmath>
 #include <cstring>
+#include <cmath>
+#include <string>
 #include "Field.hpp"
 #include "Board.hpp"
 #include "Grid.hpp"
@@ -10,75 +12,106 @@
 #include "BMPLoader.hpp"
 
 #define TIMER_ID (0)
-#define boardWidth (9)
-#define boardHeight (9)
-#define numOfMines (10)
 #define FILENAME "../Numbers/"
+#define MAX_R (20)
+#define MIN_R (4)
+
+static int boardWidth = 9;
+static int boardHeight = 9;
+static int numOfMines = 10;
 
 /* Dimenzije prozora */
-static int window_width, window_height;
-/* Koordinate pokazivaca misa */
-static int mouse_x, mouse_y;
+static int windowWidth = 1280, windowHeight = 720;
 /* Kumulativna matrica rotacije */
 static float matrix[16];
-/* Faktor za zumiranje */
-static float zoom_x = 1.0;
-static float zoom_y = 1.0;
+/* Uglovi u sfernom koordinatnom sistemu koji
+   odredjuju polozaj vidne tacke. */
+static double phi, theta;
+/* Inkrementi gornjih uglova. */
+static double deltaPhi, deltaTheta;
 /* Konstanta pi. */
 const static float pi = 3.141592653589793;
-unsigned int ID;
+
+static float centerX;
+static float centerY = 0;
+static float centerZ;
+static float r = 7;
 
 /* Deklaracija funkcije za OpenGL inicijalizaciju  */
 static void init();
 
 /* Deklaracija callback funkcija */
-static void on_keyboard(unsigned char key, int x, int y);
-static void on_reshape(int width, int height);
-static void on_display();
-static void on_mouse(int button, int state, int x, int y);
-static void on_motion(int x, int y);
-static void on_timer(int id);
+static void onKeyboard(unsigned char key, int x, int y);
+static void onReshape(int width, int height);
+static void onDisplay();
+static void onMouse(int button, int state, int x, int y);
+static void onSpecialKey(int key, int x, int y);
 
-/* Implementirane f-je */
-static void coordinate_system();
+static void coordinateSystem();
 
-/* Funkcije nezavisne od OpenGL-a
-int** initMatrix(int **matrix, int size); */
+/* 1   pomeranje na gore   W
+ * 2   pomeranje na dole   S
+ * 3   pomeranje na levo   A
+ * 4   pomeranje na desno  D
+ *
+ * -1  gornja ivica table
+ * -2  donja ivica table
+ * -3  leva ivica table
+ * -4  desna ivica table
+ *
+ * 0   default / poziva se initCamera()
+ * -5  identifikator da se ne pomera kamera niti inicijalizuje
+ *
+ *        (-1)
+ *         |
+ *         |
+ *         |
+ * (-3)---------(-4)
+ *         |
+ *         |
+ *         |
+ *        (-2)
+ *
+ * */
+static int moved = 0;
 
-static void add_texture(int i);
+static void initCamera();
+static void moveCamera();
 
-static GLuint names[10];
+static void addTexture(int i);
 
-void createMenu();
+static GLuint names[9];
 
-Board board = Board(boardWidth, boardHeight, numOfMines);
-
-BMPLoader image = BMPLoader(0, 0);
+/* Pravljenje objekta table za igru i objekta za ocitavanje bmp fajlova */
+static Board board = Board(boardWidth, boardHeight, numOfMines);
+static BMPLoader image = BMPLoader(0, 0);
 
 int main(int argc, char **argv)
 {
     /* Inicijalizuje se GLUT. */
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
 
     /* Kreira se prozor. */
-    glutInitWindowSize(1280, 720);
+    glutInitWindowSize(windowWidth, windowHeight);
     glutInitWindowPosition(100, 100);
     glutCreateWindow("Minesweeper");
 
-    /* TODO:Kreiranje menija */
-
     /* Registruju se callback funkcije. */
-    glutDisplayFunc(on_display);
-    glutKeyboardFunc(on_keyboard);
-    glutReshapeFunc(on_reshape);
-    glutMouseFunc(on_mouse);
-    glutMotionFunc(on_motion);
+    glutDisplayFunc(onDisplay);
+    glutKeyboardFunc(onKeyboard);
+    glutReshapeFunc(onReshape);
+    glutMouseFunc(onMouse);
+    glutSpecialFunc(onSpecialKey);
 
-    /* Inicijalizacija koordinata misa */
-    mouse_x = 0;
-    mouse_y = 0;
+    /* Inicijalizacija uglova za sferne koordinate
+     * koje su koriscene za pogled */
+    phi = pi / 5;
+    theta = 5 * pi / 6;
+    deltaPhi = deltaTheta = pi / 90;
 
+    /* Inicijalizacija teksta, teksture i sl. u zasebnoj funkciji
+     * kao i inicijalizacija table za igru */
     init();
     board.initBoard();
 
@@ -90,6 +123,11 @@ int main(int argc, char **argv)
 
 static void init()
 {
+    // Koeficijenti potrebni za postavljanje svetla
+    GLfloat lightAmbient[] = {0, 0, 0, 1};
+    GLfloat lightDiffuse[] = {0.8, 0.8, 0.8, 1};
+    GLfloat lightSpecular[] = {1, 1, 1, 1};
+
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glClearColor(1.0, 1.0, 1.0, 0);
     glEnable(GL_DEPTH_TEST);
@@ -114,36 +152,78 @@ static void init()
         strcat(str, iStr);
         strcat(str, ".bmp");
         image.BMPRead(str);
-        add_texture(i);
+        addTexture(i);
     }
 
     /* Iskljucujemo aktivnu teksturu */
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    /* Inicijalizacija matrice rotacije */
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
+    /* Ukljucivanje svetla */
+    glEnable(GL_LIGHTING);
+    /* Postavljanje svojstva prvog svetla */
+    glEnable(GL_LIGHT0);
+
+    glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
+    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, 1);
+
+    glShadeModel(GL_SMOOTH);
 }
 
-static void on_display()
+static void onDisplay()
 {
+    GLfloat lightPosition[] = {0.5, 0.5, 0.5, 1};
+
+    // Koeficijenti potrebni za postavljanje materijala
+    GLfloat coeffsAmbient[] = {1.0, 0.1, 0.1, 1};
+    GLfloat coeffsDiffuse[] = {0.0, 0.0, 0.8, 1};
+    GLfloat coeffsSpecular[] = {1, 1, 1, 1};
+    GLfloat coefShine = 30;
+
     /* Brise se prethodni sadrzaj prozora. */
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    /* Ukoliko je moved = 0 inicijalizujemo kameru,
+     * a za moved = -5 ne menjamo kameru
+     * u ostalim slucajevima pomeramo kameru u zavisnosti
+     * od pritisnutog tastera */
+    if(!moved)
+        initCamera();
+    else if (moved != -5)
+        moveCamera();
+
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    gluLookAt(13, 20, 8,
+
+    lightPosition[0] = 0;
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+    glShadeModel(GL_SMOOTH);
+    glEnable(GL_COLOR_MATERIAL);
+
+    gluLookAt(r * cos(theta) * cos(phi),
+              r * sin(theta),
+              r * cos(theta) * sin(phi),
               0, 0, 0,
               0, 1, 0);
 
-    /* Primena matrice rotacije */
-    glMultMatrixf(matrix);
+    /* Iskljucivanje osvetljenja */
+    glDisable(GL_LIGHTING);
+    glDisable(GL_LIGHT0);
 
-    //coordinate_system();
+    coordinateSystem();
 
-    board.drawBoard();
-    board.printValues(names); /* samo za proveru dok ne ispisemo brojeve na tabli */
+    /* Podesavaju se parametri materijala. */
+    glMaterialfv(GL_FRONT, GL_AMBIENT, coeffsAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, coeffsDiffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, coeffsSpecular);
+    glMaterialf(GL_FRONT, GL_SHININESS, coefShine);
+
+    glPushMatrix();
+        glTranslatef(centerX, centerY, centerZ);
+        board.drawBoard();
+        board.printValues(names);
+    glPopMatrix();
 
     /* Iskljucujemo aktivnu teksturu */
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -151,7 +231,7 @@ static void on_display()
     glutSwapBuffers();
 }
 
-void on_keyboard(unsigned char key, int x, int y)
+void onKeyboard(unsigned char key, int x, int y)
 {
     switch(key)
     {
@@ -159,37 +239,68 @@ void on_keyboard(unsigned char key, int x, int y)
             exit(0);
             break;
         }
-        case ' ': {
+        case 'x': { /* Obelezavanje polja na kom mislio da se nalazi mina*/
             Field *field = board.findSelectedField();
-            field->setVisited(true);
+            if(!field->isVisited())
+                field->setMarked(!field->isMarked());
+            moved = -5;
+            glutPostRedisplay();
+            break;
+        }
+        case ' ': { // space
+            Field *field = board.findSelectedField();
+            if(!field->isVisited()) { /* Klik na neposeceno polje */
+                field->setVisited(true);
+                if (field->getValue() == -1) { // ako smo kliknuli na bombu
+                    board.show(); // GAME OVER - prikazi sve
+                }
+                /* Ukoliko nema bombi u okolini pritisnutog polja
+                 * otvori sve njegove susede koje takodje nemaju mine u okolini */
+                if (field->getValue() == 0) {
+                    board.visitAllZeroValueNeighbours(field);
+                }
+            }
+            /* Klik na poseceno polje.
+             * Sluzi za otvaranje svih okolnih polja.
+             * Uz pretpostavku  da u okolini nema mina, ubrzava resavanje
+             * U suprotnom (pogresna pretpostavka) igra se zavrsava
+             * Ukoliko se u okolini nalazi polje bez suseda
+             * Otvaraju se i svi njegovi susedi sa funkcijom odozgo
+             * visitAllZeroValueNeighbours */
+            else {
+                board.visitAllNeighbours(field);
+            }
+            moved = -5; /* postavljen identifikator da se ne treba pomerati kamera */
             glutPostRedisplay();
             break;
         }
         case 'W':
         case 'w': {
+            /* 1. Trazenje trenutno selektovanog polja i njemu odgovarajuceg polja na skrivenoj tabli
+             * 2. Postavljanje selektovanog na false za oba
+             * 3. U odnosu na polozaj trenutnog polja nalazi se koje polje je iznad njega
+             * (pomeranje na gore)
+             * 4. Obelezavanje selektovano na true
+             * Slicno i za ostala pomeranja
+             * * * * * * * * */
             Field *field = board.findSelectedField();
             field->setSelected(false);
-            if(field->getY() == 0) { /* Ukoliko je trenutno polje na gornjoj ivici table za igru */
-                Field *pom = board.findSpecifiedField(field->getX(), boardHeight - 1);
-                pom->setSelected(true);
+            Grid *grid = board.findSelectedGrid();
+            grid->setSelected(false);
+            /* Ukoliko je trenutno polje na donjoj ivici table za igru */
+            if(field->getX() == boardHeight - 1 && grid->getX() == boardHeight - 1) {
+                Field *field1 = board.findSpecifiedField(0, field->getY());
+                field1->setSelected(true);
+                Grid *grid1 = board.findSpecifiedGrid(0, grid->getY());
+                grid1->setSelected(true);
+                moved = -1;
             }
             else {
-                Field *pom = board.findSpecifiedField(field->getX(), field->getY() - 1);
-                pom->setSelected(true);
-            }
-            glutPostRedisplay();
-            break;
-        }
-        case 'A':
-        case 'a': {
-            Field *field = board.findSelectedField();
-            field->setSelected(false);
-            if (field->getX() == 0) { /* Ukoliko je trenutno polje na levoj ivici table za igru */
-                Field *pom = board.findSpecifiedField(boardWidth - 1, field->getY());
-                pom->setSelected(true);
-            } else {
-                Field *pom = board.findSpecifiedField(field->getX() - 1, field->getY());
-                pom->setSelected(true);
+                Field *field1 = board.findSpecifiedField(field->getX() + 1, field->getY());
+                field1->setSelected(true);
+                Grid *grid1 = board.findSpecifiedGrid(grid->getX() + 1, grid->getY());
+                grid1->setSelected(true);
+                moved = 1;
             }
             glutPostRedisplay();
             break;
@@ -198,13 +309,45 @@ void on_keyboard(unsigned char key, int x, int y)
         case 's': {
             Field *field = board.findSelectedField();
             field->setSelected(false);
-            if(field->getY() == boardHeight - 1) { /* Ukoliko je trenutno polje na donjoj ivici table za igru */
-                Field *pom = board.findSpecifiedField(field->getX(), 0);
-                pom->setSelected(true);
+            Grid *grid = board.findSelectedGrid();
+            grid->setSelected(false);
+            /* Ukoliko je trenutno polje na gornjoj ivici table za igru */
+            if (field->getX() == 0 && grid->getX() == 0) {
+                Field *field1 = board.findSpecifiedField(boardHeight - 1, field->getY());
+                field1->setSelected(true);
+                Grid *grid1 = board.findSpecifiedGrid(boardHeight - 1, grid->getY());
+                grid1->setSelected(true);
+                moved = -2;
+            } else {
+                Field *field1 = board.findSpecifiedField(field->getX() - 1, field->getY());
+                field1->setSelected(true);
+                Grid *grid1 = board.findSpecifiedGrid(grid->getX() - 1, grid->getY());
+                grid1->setSelected(true);
+                moved = 2;
+            }
+            glutPostRedisplay();
+            break;
+        }
+        case 'A':
+        case 'a': {
+            Field *field = board.findSelectedField();
+            field->setSelected(false);
+            Grid *grid = board.findSelectedGrid();
+            grid->setSelected(false);
+            /* Ukoliko je trenutno polje na desnoj ivici table za igru */
+            if(field->getY() == 0 && grid->getY() == 0) {
+                Field *field1 = board.findSpecifiedField(field->getX(), boardWidth - 1);
+                field1->setSelected(true);
+                Grid *grid1 = board.findSpecifiedGrid(grid->getX(), boardWidth - 1);
+                grid1->setSelected(true);
+                moved = -3;
             }
             else {
-                Field *pom = board.findSpecifiedField(field->getX(), field->getY() + 1);
-                pom->setSelected(true);
+                Field *field1 = board.findSpecifiedField(field->getX(), field->getY() - 1);
+                field1->setSelected(true);
+                Grid *grid1 = board.findSpecifiedGrid(grid->getX(), grid->getY() - 1);
+                grid1->setSelected(true);
+                moved = 3;
             }
             glutPostRedisplay();
             break;
@@ -213,37 +356,102 @@ void on_keyboard(unsigned char key, int x, int y)
         case 'd': {
             Field *field = board.findSelectedField();
             field->setSelected(false);
-            if(field->getX() == boardWidth - 1) { /* Ukoliko je trenutno polje na desnoj ivici table za igru */
-                Field *pom = board.findSpecifiedField(0, field->getY());
-                pom->setSelected(true);
+            Grid *grid = board.findSelectedGrid();
+            grid->setSelected(false);
+            /* Ukoliko je trenutno polje na levoj ivici table za igru */
+            if(field->getY() == boardWidth - 1 && grid->getY() == boardWidth - 1) {
+                Field *field1 = board.findSpecifiedField(field->getX(), 0);
+                field1->setSelected(true);
+                Grid *grid1 = board.findSpecifiedGrid(grid->getX(), 0);
+                grid1->setSelected(true);
+                moved = -4;
             }
             else {
-                Field *pom = board.findSpecifiedField(field->getX() + 1, field->getY());
-                pom->setSelected(true);
+                Field *field1 = board.findSpecifiedField(field->getX(), field->getY() + 1);
+                field1->setSelected(true);
+                Grid *grid1 = board.findSpecifiedGrid(grid->getX(), grid->getY() + 1);
+                grid1->setSelected(true);
+                moved = 4;
             }
             glutPostRedisplay();
             break;
         }
+        case 'R': // restart
+        case 'r': {
+            board.initBoard();
+            glutPostRedisplay();
+            moved = 0; // vracanje na default kako bi se pozvala funkcija initCamera()
+            break;
+        }
+        case '1': { // Beginner
+            boardWidth = 9;
+            boardHeight = 9;
+            numOfMines = 10;
+            moved = 0; // vracanje na default kako bi se pozvala funkcija initCamera()
+            board.change(boardWidth, boardHeight, numOfMines);
+            board.initBoard();
+            glutPostRedisplay();
+            break;
+        }
+        case '2': { // Intermediate
+            boardWidth = 16;
+            boardHeight = 16;
+            numOfMines = 40;
+            moved = 0; // vracanje na default kako bi se pozvala funkcija initCamera()
+            board.change(boardWidth, boardHeight, numOfMines);
+            board.initBoard();
+            glutPostRedisplay();
+            break;
+        }
+        case '3': { // Expert
+            boardWidth = 30;
+            boardHeight = 16;
+            numOfMines = 99;
+            moved = 0; // vracanje na default kako bi se pozvala funkcija initCamera()
+            board.change(boardWidth, boardHeight, numOfMines);
+            board.initBoard();
+            glutPostRedisplay();
+            break;
+        }
+        case 'i': // Zoom in
+            r--;
+            if(r < MIN_R)
+                r = MIN_R;
+            moved = -5;
+            glutPostRedisplay();
+            break;
+        case 'o': // Zoom out
+            r++;
+            if(r > MAX_R)
+                r = MAX_R;
+            moved = -5;
+            glutPostRedisplay();
+            break;
         default:
             break;
     }
 }
 
-static void on_reshape(int width, int height)
+static void onReshape(int width, int height)
 {
     /* Pamte se sirina i visina prozora. */
-    window_width = width;
-    window_height = height;
+    windowWidth = width;
+    windowHeight = height;
 
     /* Podesava se viewport. */
-    glViewport(0, 0, window_width, window_height);
+    glViewport(0, 0, windowWidth, windowHeight);
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(70, window_width/(float)window_height, 1, 200);
+    gluPerspective(65, windowWidth/(float)windowHeight, 1, 200);
 }
 
-static void coordinate_system()
+/* Pomocna funkcija za iscrtavanje koordinatnog sistema
+ * X - Red
+ * Y - Green
+ * Z - Blue
+ * */
+static void coordinateSystem()
 {
     glBegin(GL_LINES);
         glColor3f(1, 0, 0);
@@ -260,59 +468,31 @@ static void coordinate_system()
     glEnd();
 }
 
-void on_mouse(int button, int state, int x, int y) {
+void onMouse(int button, int state, int x, int y) {
     switch(button)
     {
-        case GLUT_LEFT_BUTTON:
+        /* Mouse wheel scroll up
+         * Zoom in */
+        case 3:
+            r--;
+            if(r < MIN_R)
+                r = MIN_R;
             break;
-        case GLUT_RIGHT_BUTTON:
-            break;
-        case 3: /* Mouse wheel scroll up */
-            
-            break;
-        case 4: /* Mouse wheel scrool down */
+        /* Mouse wheel scrool down
+         * Zoom out */
+        case 4:
+            r++;
+            if(r > MAX_R)
+                r = MAX_R;
             break;
         default:
             break;
     }
-    mouse_x = x;
-    mouse_y = y;
-}
-
-void on_motion(int x, int y) {
-    /* Promene pozicija pokazivaca misa */
-    int delta_x, delta_y;
-
-    /* Racunanje promena pozicije */
-    delta_x = x - mouse_x;
-    delta_y = y - mouse_y;
-
-    /* Pamcenje nove pozicije */
-    mouse_x = x;
-    mouse_y = y;
-
-    /* Izracunavanje nove matrice rotacije. */
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
-    glRotatef(180 * (float) delta_x / window_width, 0, 1, 0);
-    glRotatef(180 * (float) delta_y / window_height, 1, 0, 0);
-    glMultMatrixf(matrix);
-
-    glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-    glPopMatrix();
-
+    moved = -5; // identifikator da nije bilo pomeranja na tabli
     glutPostRedisplay();
 }
 
-void on_timer(int id) {
-    if(TIMER_ID != id)
-        return;
-
-    glutPostRedisplay();
-}
-
-void add_texture(int i) {
+void addTexture(int i) {
     glBindTexture(GL_TEXTURE_2D, names[i]);
     glTexParameteri(GL_TEXTURE_2D,
                     GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -327,3 +507,89 @@ void add_texture(int i) {
                  GL_RGB, GL_UNSIGNED_BYTE, image.pixels);
 }
 
+void initCamera() {
+    centerX = 0;
+    centerZ = 0;
+    phi = pi / 5;
+    theta = 5 * pi / 6;
+}
+
+void moveCamera() {
+    switch(moved) {
+        case 1:
+            centerX -= 1;
+            break;
+        case 2:
+            centerX += 1;
+            break;
+        case 3:
+            centerZ += 1;
+            break;
+        case 4:
+            centerZ -= 1;
+            break;
+        case -1:
+            centerX += boardHeight - 1;
+            break;
+        case -2:
+            centerX -= boardHeight - 1;
+            break;
+        case -3:
+            centerZ -= boardWidth - 1;
+            break;
+        case -4:
+            centerZ += boardWidth - 1;
+            break;
+        default:
+            break;
+    }
+}
+
+void onSpecialKey(int key, int x, int y) {
+    switch(key) {
+        case GLUT_KEY_RIGHT:
+            /* Dekrementiranje ugla phi. */
+            phi -= deltaPhi;
+            if (phi > 2 * pi) {
+                phi -= 2 * pi;
+            } else if (phi < 0) {
+                phi += 2 * pi;
+            }
+            break;
+        case GLUT_KEY_LEFT:
+            /* Inkrementiranje ugla phi. */
+            phi += deltaPhi;
+            if (phi > 2 * pi) {
+                phi -= 2 * pi;
+            } else if (phi < 0) {
+                phi += 2 * pi;
+            }
+            break;
+        case GLUT_KEY_UP:
+            /*
+            * Dekrementiranje ugla theta.
+            * Ugao pripada intervalu [90, 150] stepeni.
+            */
+            theta -= deltaTheta;
+            if (theta < pi / 2) {
+                theta = pi / 2;
+            }
+            break;
+        case GLUT_KEY_DOWN:
+            /*
+            * Inkrementiranje ugla theta.
+            * Ugao pripada intervalu [90, 150] stepeni.
+            */
+            theta += deltaTheta;
+            if (theta > 5 * pi / 6) {
+                theta = 5 * pi / 6;
+            }
+            break;
+        default:
+            break;
+    }
+    /* U svim slucajevima postavljamo moved na -5 sto oznacava nije bilo pomeranja
+     * na tabli i ponovo iscrtavamo scenu */
+    moved = -5;
+    glutPostRedisplay();
+}

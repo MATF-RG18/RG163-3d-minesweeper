@@ -7,6 +7,7 @@ class Grid {
 private:
     int x;
     int y;
+    bool selected;
 public:
     Grid(int x, int y);
 
@@ -15,6 +16,10 @@ public:
     int getX() const;
 
     int getY() const;
+
+    bool isSelected() const;
+
+    void setSelected(bool selected);
 };
 
 

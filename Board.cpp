@@ -5,19 +5,7 @@
 Board::Board(int boardHeight, int boardWidth, int numberOfMines)
         : boardHeight(boardHeight),
           boardWidth(boardWidth),
-          numberOfMines(numberOfMines) {
-
-    for(int i = 0; i < boardWidth; i++) {
-        for(int j = 0; j < boardHeight; j++) {
-            Grid* grid = new Grid(i, j);
-            Field* field = new Field(i, j);
-            if(i == 0 && j == 0)
-                field->setSelected(true);
-            this->addField(field);
-            this->addGrid(grid);
-        }
-    }
-}
+          numberOfMines(numberOfMines) {}
 
 void Board::addField(Field* field) {
     fields.push_back(field);
@@ -55,6 +43,21 @@ void Board::addGrid(Grid *grid) {
 }
 
 void Board::initBoard() {
+    fields.clear();
+    grids.clear();
+    mines.clear();
+    for(int i = 0; i < boardWidth; i++) {
+        for (int j = 0; j < boardHeight; j++) {
+            Grid *grid = new Grid(i, j);
+            Field *field = new Field(i, j);
+            if (i == 0 && j == 0) {
+                field->setSelected(true);
+                grid->setSelected(true);
+            }
+            this->addField(field);
+            this->addGrid(grid);
+        }
+    }
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
     std::vector<std::pair<int, int>> all;
     while(all.size() < numberOfMines) {
@@ -64,8 +67,8 @@ void Board::initBoard() {
         pairXY.first = randomX;
         pairXY.second = randomY;
         bool unique = true; // sluzi za proveru jedinstvenosti elemenata zbog f-je rand()
-        for(unsigned j = 0; j < all.size(); j++) {
-            if(all[j].first == pairXY.first && all[j].second == pairXY.second)
+        for (auto &j : all) {
+            if(j.first == pairXY.first && j.second == pairXY.second)
                 unique = false;
         }
         if(unique) {
@@ -74,9 +77,6 @@ void Board::initBoard() {
             field->setMine(true);
             Mine* mine = new Mine(randomX, randomY, 0.33);
             this->addMine(mine);
-            /*
-            Mine mine = Mine(randomX, randomY, 0.33);
-            mine.drawMine();*/
         }
     }
     calculateValues();
@@ -121,23 +121,79 @@ void Board::printValues(GLuint *names) {
         Grid *grid = findSpecifiedGrid(field->getX(), field->getY());
         glBindTexture(GL_TEXTURE_2D, names[value]);
         glBegin(GL_QUADS);
-        glNormal3f(0, 1, 0);
+            glNormal3f(0, 1, 0);
+            /* Umesto 0.5 stavljeno je 0.49 kako bi se videle linije izmedju kvadratica na podlozi
+             * odnosno da bi se videla tekstura (y koordinata)
+             * */
+            glTexCoord2f(0.3, 0);
+            glVertex3f(grid->getX() - 0.49f, -0.49f, grid->getY() - 0.49f);
 
-        glTexCoord2f(0.3, 0);
-        glVertex3f(grid->getX() - 0.49, -0.49, grid->getY() - 0.49); /* Umesto 0.5 stavljeno je 0.49 kako bi se videle linije izmedju kvadratica na podlozi */
+            glTexCoord2f(1, 0);
+            glVertex3f(grid->getX() - 0.49f, -0.49f, grid->getY() + 0.49f);
 
-        glTexCoord2f(1, 0);
-        glVertex3f(grid->getX() - 0.49, -0.49, grid->getY() + 0.49);
+            glTexCoord2f(1, 0.9);
+            glVertex3f(grid->getX() + 0.49f, -0.49f, grid->getY() + 0.49f);
 
-        glTexCoord2f(1, 0.9);
-        glVertex3f(grid->getX() + 0.49, -0.49, grid->getY() + 0.49);
-
-        glTexCoord2f(0.3, 0.9);
-        glVertex3f(grid->getX() + 0.49, -0.49, grid->getY() - 0.49);
+            glTexCoord2f(0.3, 0.9);
+            glVertex3f(grid->getX() + 0.49f, -0.49f, grid->getY() - 0.49f);
         glEnd();
     }
 }
 
 void Board::addMine(Mine *mine) {
     mines.push_back(mine);
+}
+
+Grid *Board::findSelectedGrid() {
+    for(Grid *grid : grids){
+        if(grid->isSelected())
+            return grid;
+    }
+}
+
+void Board::visitAllZeroValueNeighbours(Field *field) {
+    int x = field->getX();
+    int y = field->getY();
+    for (int i = x - 1; i <= x + 1; i++) {
+        if (i < 0 || i >= boardWidth) continue;
+        for (int j = y - 1; j <= y + 1; j++) {
+            if (j < 0 || j >= boardHeight) continue;
+            Field *neighbour = findSpecifiedField(i, j);
+            if (!neighbour->isVisited()) {
+                neighbour->setVisited(true);
+                if (neighbour->getValue() == 0)
+                    visitAllZeroValueNeighbours(neighbour);
+            }
+        }
+    }
+}
+
+void Board::change(int boardHeight, int boardWidth, int numberOfMines) {
+    this->boardHeight = boardHeight;
+    this->boardWidth = boardWidth;
+    this->numberOfMines = numberOfMines;
+}
+
+void Board::show() {
+    for(Field *field : fields)
+        field->setVisited(true);
+}
+
+void Board::visitAllNeighbours(Field *field) {
+    int x = field->getX();
+    int y = field->getY();
+    for (int i = x - 1; i <= x + 1; i++) {
+        if (i < 0 || i >= boardWidth) continue;
+        for (int j = y - 1; j <= y + 1; j++) {
+            if (j < 0 || j >= boardHeight) continue;
+            Field *neighbour = findSpecifiedField(i, j);
+            if (!neighbour->isVisited() && !neighbour->isMarked()) {
+                neighbour->setVisited(true);
+                if(neighbour->getValue() == -1) // ukoliko je bomba
+                    this->show(); // GAME OVER / prikazi sve
+                if(neighbour->getValue() == 0)
+                    visitAllZeroValueNeighbours(neighbour);
+            }
+        }
+    }
 }

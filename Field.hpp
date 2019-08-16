@@ -12,7 +12,7 @@ private:
     bool mine; /* Polje sa minom */
     bool marked; /* Polje obelezeno kao bomba */
     bool selected; /* Trenutno polje */
-    int value; /* broj koji je upisan u polje / broj okolnih bombi */
+    int value; /* Broj koji je upisan u polje / broj okolnih bombi */
 public:
     Field(int x, int y);
 
