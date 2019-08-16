@@ -15,7 +15,10 @@ void BMPLoader::BMPRead(const char *filename) {
     this->pixels = nullptr;
 
     /* Otvaranje fajla koji sadrzi sliku u binarnom rezimu. */
-    assert((file = fopen(filename, "rb")) != nullptr);
+    if((file = fopen(filename, "rb")) == nullptr) {
+        fprintf(stderr, "Nepostojeci fajl\n");
+        exit(1);
+    }
 
     /* Ocitavanje podataka prvog zaglavlja. */
     fread(&bfh.type, 2, 1, file);

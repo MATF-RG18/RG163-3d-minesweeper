@@ -413,6 +413,7 @@ void onKeyboard(unsigned char key, int x, int y)
             glutPostRedisplay();
             break;
         }
+        case 'I':
         case 'i': // Zoom in
             r--;
             if(r < MIN_R)
@@ -420,6 +421,7 @@ void onKeyboard(unsigned char key, int x, int y)
             moved = -5;
             glutPostRedisplay();
             break;
+        case 'O':
         case 'o': // Zoom out
             r++;
             if(r > MAX_R)
