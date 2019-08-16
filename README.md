@@ -32,6 +32,6 @@ Cilj je otvoriti sva polja pritom ne "gazeći" na minu. Na svakom otvorenom polj
 ## Instalacija / pokretanje
 * ``` git clone https://github.com/MATF-RG18/RG163-3d-minesweeper ```
 * ``` cd RG163-3d-minesweeper ```
-* ``` cmake ```
+* ``` cmake . ```
 * ``` make ```
 * ``` ./main ```
