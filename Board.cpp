@@ -27,9 +27,6 @@ void Board::drawBoard() {
     for(Mine* mine : mines) {
         mine->drawMine();
     }
-    for(Flag* flag : flags) {
-        flag->drawFlag();
-    }
 }
 
 Field* Board::findSelectedField() {
@@ -54,7 +51,6 @@ void Board::initBoard() {
     fields.clear();
     grids.clear();
     mines.clear();
-    flags.clear();
     for(int i = 0; i < boardWidth; i++) {
         for (int j = 0; j < boardHeight; j++) {
             Grid *grid = new Grid(i, j);
@@ -205,12 +201,4 @@ void Board::visitAllNeighbours(Field *field) {
             }
         }
     }
-}
-
-const std::vector<Field *> &Board::getFields() const {
-    return fields;
-}
-
-void Board::addFlag(Flag *flag) {
-    flags.push_back(flag);
 }

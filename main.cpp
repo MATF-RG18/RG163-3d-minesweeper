@@ -249,14 +249,16 @@ void onKeyboard(unsigned char key, int x, int y)
         case ' ': { // space
             Field *field = board.findSelectedField();
             if(!field->isVisited()) { /* Klik na neposeceno polje */
-                field->setVisited(true);
-                if (field->getValue() == -1) { // ako smo kliknuli na bombu
-                    board.show(); // GAME OVER - prikazi sve
-                }
-                /* Ukoliko nema bombi u okolini pritisnutog polja
-                 * otvori sve njegove susede koje takodje nemaju mine u okolini */
-                if (field->getValue() == 0) {
-                    board.visitAllZeroValueNeighbours(field);
+                if(!field->isMarked()) { /* Moze se kliknuti samo ako nije stavljena zastavica */
+                    field->setVisited(true);
+                    if (field->getValue() == -1) { // ako smo kliknuli na bombu
+                        board.show(); // GAME OVER - prikazi sve
+                    }
+                    /* Ukoliko nema bombi u okolini pritisnutog polja
+                     * otvori sve njegove susede koje takodje nemaju mine u okolini */
+                    if (field->getValue() == 0) {
+                        board.visitAllZeroValueNeighbours(field);
+                    }
                 }
             }
             /* Klik na poseceno polje.
