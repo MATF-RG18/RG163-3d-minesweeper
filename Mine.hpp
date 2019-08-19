@@ -9,7 +9,7 @@ private:
     int y;
     float radius;
 public:
-    Mine(int x, int y, float r);
+    Mine(int x, int y);
 
     void drawMine();
 };

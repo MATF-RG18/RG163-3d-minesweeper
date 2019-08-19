@@ -5,7 +5,6 @@ void Mine::drawMine() {
     glEnable(GL_LIGHT0);
     glPushMatrix();
         glTranslatef(this->x, 0.0, this->y);
-        float radius = 0.28;
         float angle = 0;
         glColor3f(0.2, 0.2, 0.2);
         glutSolidSphere(radius, 20, 20);
@@ -45,5 +44,5 @@ void Mine::drawMine() {
     glDisable(GL_LIGHT0);
 }
 
-Mine::Mine(int x, int y, float r)
-    : x(x), y(y), radius(r) {}
+Mine::Mine(int x, int y)
+    : x(x), y(y), radius(0.3) {}

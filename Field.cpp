@@ -10,15 +10,10 @@ void Field::drawField() {
         glTranslatef(this->x, 0, this->y);
         if(this->isSelected())
             glColor3f(0.5, 0.5, 0.5);
-        else if(this->isMarked())
-            glColor3f(1, 0, 0);
         else
             glColor3f(0.7, 0.7, 0.7);
         glutSolidCube(1);
-        if(this->isMarked())
-            glColor3f(0.2, 0, 0);
-        else
-            glColor3f(0.5, 0.5, 0.5);
+        glColor3f(0.5, 0.5, 0.5);
         glutWireCube(1);
     glPopMatrix();
     glDisable(GL_LIGHTING);

@@ -8,6 +8,7 @@
 #include "Field.hpp"
 #include "Grid.hpp"
 #include "Mine.hpp"
+#include "Flag.hpp"
 
 class Board {
 private:
@@ -17,6 +18,7 @@ private:
     std::vector<Field*> fields;
     std::vector<Grid*> grids;
     std::vector<Mine*> mines;
+    std::vector<Flag*> flags;
 public:
     Board(int boardHeight, int boardWidth, int numberOfMines);
 
@@ -49,6 +51,10 @@ public:
     void show();
 
     void visitAllNeighbours(Field *field);
+
+    const std::vector<Field *> &getFields() const;
+
+    void addFlag(Flag* flag);
 };
 
 

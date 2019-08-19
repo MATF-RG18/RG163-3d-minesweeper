@@ -13,14 +13,22 @@ void Board::addField(Field* field) {
 
 void Board::drawBoard() {
     for(Field* field : fields) {
-        if(!field->isVisited())
+        if(!field->isVisited()) {
             field->drawField();
+            if(field->isMarked()) {
+                Flag *flag = new Flag(field->getX(), field->getY());
+                flag->drawFlag();
+            }
+        }
     }
     for(Grid* grid : grids) {
         grid->drawGrid();
     }
     for(Mine* mine : mines) {
         mine->drawMine();
+    }
+    for(Flag* flag : flags) {
+        flag->drawFlag();
     }
 }
 
@@ -46,6 +54,7 @@ void Board::initBoard() {
     fields.clear();
     grids.clear();
     mines.clear();
+    flags.clear();
     for(int i = 0; i < boardWidth; i++) {
         for (int j = 0; j < boardHeight; j++) {
             Grid *grid = new Grid(i, j);
@@ -75,7 +84,7 @@ void Board::initBoard() {
             all.push_back(pairXY);
             Field *field = findSpecifiedField(randomX, randomY);
             field->setMine(true);
-            Mine* mine = new Mine(randomX, randomY, 0.33);
+            Mine* mine = new Mine(randomX, randomY);
             this->addMine(mine);
         }
     }
@@ -196,4 +205,12 @@ void Board::visitAllNeighbours(Field *field) {
             }
         }
     }
+}
+
+const std::vector<Field *> &Board::getFields() const {
+    return fields;
+}
+
+void Board::addFlag(Flag *flag) {
+    flags.push_back(flag);
 }

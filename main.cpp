@@ -9,6 +9,7 @@
 #include "Board.hpp"
 #include "Grid.hpp"
 #include "Mine.hpp"
+#include "Flag.hpp"
 #include "BMPLoader.hpp"
 
 #define FILENAME "../Numbers/"
@@ -198,6 +199,7 @@ static void onDisplay()
     glShadeModel(GL_SMOOTH);
     glEnable(GL_COLOR_MATERIAL);
 
+    /* Koriscenje sfernih koordinata za pogled */
     gluLookAt(r * cos(theta) * cos(phi),
               r * sin(theta),
               r * cos(theta) * sin(phi),
