@@ -1,7 +1,7 @@
 # :bomb: 3D Minesweeper
 Svima dobro poznata igrica, popularna uglavnom kada nema interneta :cry:. Spas od dosade, ali opet dovoljno zanimljiva da joj se uvek vratimo i pokušavamo da oborimo sopstveni rekord.
 ## Pravila i komande
-Cilj je otvoriti sva polja pritom ne "gazeći" na minu. Na svakom otvorenom polju ispisan je broj mina oko tog polja. Moguće je obeležavanje polja za koja mislite da su mine time će se ona obojiti u crvenu boju. Takođe, omogućeno je da se pritiskom na otvoreno polje otvore sva susedna polja kako bi se ubrzalo rešavanje slagalice. Koristite pažljivo jer ukoliko ipak ima mina u okolini izgubili ste.
+Cilj je otvoriti sva polja pritom ne *"gazeći"* na minu. Na svakom otvorenom polju ispisan je broj mina oko tog polja. Moguće je obeležavanje polja za koja mislite da su mine stavljanjem zastavice. Takođe, omogućeno je da se pritiskom na otvoreno polje otvore sva susedna polja kako bi se ubrzalo rešavanje slagalice (koristite pažljivo jer ukoliko ipak ima mina u okolini izgubili ste). U slučaju da *"stanete"* na minu prikazaće se cela tabla čime će se označiti **game over**.
 
 |  Taster|Komanda  |
 |--------|---------|
